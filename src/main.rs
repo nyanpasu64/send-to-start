@@ -1,6 +1,7 @@
 use std::env::current_exe;
 use std::ffi::{c_void, OsString};
 use std::fs::create_dir_all;
+use std::mem::size_of;
 use std::path::{Path, PathBuf};
 use std::slice;
 
@@ -12,7 +13,9 @@ use windows::Win32::Globalization::lstrlenW;
 use windows::Win32::System::Com;
 use windows::Win32::System::Com::{CoCreateInstance, CoInitializeEx, CoTaskMemFree, IPersistFile};
 use windows::Win32::UI::Shell;
-use windows::Win32::UI::Shell::{IShellLinkW, SHGetKnownFolderPath, KF_FLAG_DEFAULT};
+use windows::Win32::UI::Shell::{
+    IShellLinkW, SHGetKnownFolderPath, SHGetStockIconInfo, SHSTOCKICONINFO,
+};
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -25,7 +28,8 @@ struct Cli {
 fn get_path(folder_id: GUID) -> Result<PathBuf> {
     use std::os::windows::prelude::OsStringExt;
     unsafe {
-        let path_ptr: PWSTR = SHGetKnownFolderPath(&folder_id, KF_FLAG_DEFAULT as u32, HANDLE(0))?;
+        let path_ptr: PWSTR =
+            SHGetKnownFolderPath(&folder_id, Shell::KF_FLAG_DEFAULT as u32, HANDLE(0))?;
         let path_ref: &[u16] = slice::from_raw_parts(path_ptr.0, lstrlenW(path_ptr) as usize);
         let path_copy: PathBuf = OsString::from_wide(path_ref).into();
         CoTaskMemFree(path_ptr.0 as *mut c_void);
@@ -33,12 +37,7 @@ fn get_path(folder_id: GUID) -> Result<PathBuf> {
     }
 }
 
-struct IconPath {
-    path: PathBuf,
-    index: i32,
-}
-
-fn create_lnk(link: &Path, target: &Path, icon: Option<&IconPath>) -> Result<()> {
+fn create_lnk(link: &Path, target: &Path, icon: Option<&SHSTOCKICONINFO>) -> Result<()> {
     // Ported from https://stackoverflow.com/a/3907013.
     unsafe {
         let shell_link: IShellLinkW =
@@ -49,9 +48,12 @@ fn create_lnk(link: &Path, target: &Path, icon: Option<&IconPath>) -> Result<()>
             .with_context(|| format!("setting .lnk path to \"{}\"", target.display()))?;
 
         // Pick the "link" icon.
-        if let Some(icon) = &icon {
+        if let Some(icon) = icon {
+            // SetIconLocation() doesn't mutate its string...
+            // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishelllinka-seticonlocation
+            // says LPCSTR and the C means const... pinky swear...
             shell_link
-                .SetIconLocation(icon.path.as_os_str(), icon.index)
+                .SetIconLocation(PWSTR(&icon.szPath as *const u16 as *mut u16), icon.iIcon)
                 .context("setting icon")?;
         }
 
@@ -122,21 +124,24 @@ fn main() -> Result<()> {
 
         let exe_name = current_exe().context("failed to locate program for Send To")?;
 
-        // imageres.dll (163) is the link icon.
-        let mut icon_path =
-            get_path(Shell::FOLDERID_System).context("obtaining system32 folder for icon")?;
-        icon_path.push("imageres.dll");
-        let icon_path = IconPath {
-            path: icon_path,
-            index: 154,
-        };
+        let mut icon_info: SHSTOCKICONINFO = SHSTOCKICONINFO::default();
+        icon_info.cbSize = size_of::<SHSTOCKICONINFO>() as u32;
+        unsafe {
+            SHGetStockIconInfo(
+                Shell::SIID_LINK,
+                Shell::SHGSI_ICONLOCATION,
+                &mut icon_info as *mut _,
+            )
+            .context("failed to obtain link icon")?;
+        }
 
         eprintln!(
             "install shortcut at \"{}\" to \"{}\"",
             shortcut.display(),
             exe_name.display()
         );
-        create_lnk(&shortcut, &exe_name, Some(&icon_path)).context("failed to install to Send To")?;
+        create_lnk(&shortcut, &exe_name, Some(&icon_info))
+            .context("failed to install to Send To")?;
     }
 
     Ok(())
