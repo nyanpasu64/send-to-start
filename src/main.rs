@@ -77,10 +77,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     if let Some(exe) = cli.exe {
-        let start_menu =
-            get_path(Shell::FOLDERID_StartMenu).context("failed to find Start menu path")?;
-
-        let mut folder = start_menu;
+        let mut folder =
+            get_path(Shell::FOLDERID_Programs).context("failed to find Programs path")?;
         folder.push("Shortcuts");
         create_dir_all(&folder).with_context(|| {
             format!(
