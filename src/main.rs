@@ -36,9 +36,6 @@ fn main() -> Result<()> {
 
     if let Some(exe) = cli.exe {
         let start_menu = get_path(Shell::FOLDERID_StartMenu)?;
-        // let exe_stem = exe
-        //     .file_stem()
-        //     .with_context(|| format!("Cannot identify filename of path {}", exe.display()))?;
 
         let mut shortcut = start_menu;
 
