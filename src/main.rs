@@ -12,25 +12,12 @@ use windows::Win32::Globalization::lstrlenW;
 use windows::Win32::UI::Shell;
 use windows::Win32::UI::Shell::{SHGetKnownFolderPath, KF_FLAG_DEFAULT};
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
-    #[clap(subcommand)]
-    command: Option<Commands>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Install a "Send to start" item in the "Send to" menu.
-    Install,
-
-    /// Create a Start Menu shortcut from a .exe file.
-    Create { exe: PathBuf },
-
-    /// Remove the "Send to start" item from the "Send to" menu.
-    Uninstall,
+    exe: Option<PathBuf>,
 }
 
 fn get_path(folder_id: GUID) -> Result<PathBuf> {
@@ -49,30 +36,37 @@ fn get_path(folder_id: GUID) -> Result<PathBuf> {
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    // You can check for the existence of subcommands, and if found use their
-    // matches just as you would the top level app
-    match &cli.command {
-        Some(Commands::Install) => {
-            let send_to = get_path(Shell::FOLDERID_SendTo)?;
+    if let Some(exe) = cli.exe {
+        let start_menu = get_path(Shell::FOLDERID_StartMenu)?;
+        // let exe_stem = exe
+        //     .file_stem()
+        //     .with_context(|| format!("Cannot identify filename of path {}", exe.display()))?;
 
-            eprintln!("install to \"{}\"", send_to.display());
-        }
-        Some(Commands::Create { ref exe }) => {
-            let start_menu = get_path(Shell::FOLDERID_StartMenu)?;
-            eprintln!(
-                "create shortcut at \"{}\" to \"{}\"",
-                start_menu.display(),
-                exe.display(),
-            );
-        }
-        Some(Commands::Uninstall) => {
-            eprintln!("uninstall");
-        }
-        None => {
-            eprintln!("Install \"Send to start\"?");
-        }
+        let mut shortcut = start_menu;
+
+        // See https://users.rust-lang.org/t/append-an-additional-extension/23586
+        // shortcut.push(exe_stem.to_owned() + OsStr::new(".lnk"));
+        shortcut.push(exe.with_extension("lnk"));
+
+        let abs_exe = if exe.is_absolute() {
+            exe
+        } else {
+            let mut abs_exe = std::env::current_dir()
+                .context("Cannot find current directory for relative path")?;
+            abs_exe.push(exe);
+            abs_exe
+        };
+
+        eprintln!(
+            "create shortcut at \"{}\" to \"{}\"",
+            shortcut.display(),
+            abs_exe.display(),
+        );
+    } else {
+        let send_to = get_path(Shell::FOLDERID_SendTo)?;
+
+        eprintln!("install to \"{}\"", send_to.display());
     }
 
-    // Continued program logic goes here...
     Ok(())
 }
