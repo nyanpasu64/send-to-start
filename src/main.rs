@@ -17,6 +17,8 @@ use clap::Parser;
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
+    /// If omitted, installs a shortcut to itself in Explorer's "Send To" menu.
+    /// If passed, installs a shortcut to the .exe in the start menu.
     exe: Option<PathBuf>,
 }
 
