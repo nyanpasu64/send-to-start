@@ -114,9 +114,6 @@ fn main() -> Result<()> {
             abs_exe.display(),
         );
         create_lnk(&shortcut, &abs_exe, None).context("failed to create app shortcut")?;
-
-        let mut s = String::new();
-        std::io::stdin().read_line(&mut s)?;
     } else {
         let send_to = get_path(Shell::FOLDERID_SendTo).context("failed to find Send To path")?;
         let mut shortcut = send_to;
