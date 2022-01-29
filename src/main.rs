@@ -78,7 +78,13 @@ fn main() -> Result<()> {
         let mut shortcut = folder;
         // See https://users.rust-lang.org/t/append-an-additional-extension/23586
         // shortcut.push(exe_stem.to_owned() + OsStr::new(".lnk"));
-        shortcut.push(exe.with_extension("lnk"));
+        let lnk_name = {
+            let exe_name = exe
+                .file_name()
+                .with_context(|| format!("cannot identify filename of path {}", exe.display()))?;
+            Path::new(exe_name).with_extension("lnk")
+        };
+        shortcut.push(lnk_name);
 
         let abs_exe = if exe.is_absolute() {
             exe
