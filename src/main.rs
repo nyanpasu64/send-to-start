@@ -17,6 +17,7 @@ use windows::Win32::UI::Shell::{
     IShellLinkW, SHGetKnownFolderPath, SHGetStockIconInfo, SHSTOCKICONINFO,
 };
 
+/// A tool to add programs to Windows Start menu search without pinning them
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
 struct Cli {
