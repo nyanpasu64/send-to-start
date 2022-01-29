@@ -33,7 +33,12 @@ fn get_path(folder_id: GUID) -> Result<PathBuf> {
     }
 }
 
-fn create_lnk(link: &Path, target: &Path) -> Result<()> {
+struct IconPath {
+    path: PathBuf,
+    index: i32,
+}
+
+fn create_lnk(link: &Path, target: &Path, icon: Option<&IconPath>) -> Result<()> {
     // Ported from https://stackoverflow.com/a/3907013.
     unsafe {
         let shell_link: IShellLinkW =
@@ -42,6 +47,13 @@ fn create_lnk(link: &Path, target: &Path) -> Result<()> {
         shell_link
             .SetPath(target.as_os_str())
             .with_context(|| format!("setting .lnk path to \"{}\"", target.display()))?;
+
+        // Pick the "link" icon.
+        if let Some(icon) = &icon {
+            shell_link
+                .SetIconLocation(icon.path.as_os_str(), icon.index)
+                .context("setting icon")?;
+        }
 
         let persist_file: IPersistFile = shell_link
             .cast::<IPersistFile>()
@@ -77,7 +89,6 @@ fn main() -> Result<()> {
 
         let mut shortcut = folder;
         // See https://users.rust-lang.org/t/append-an-additional-extension/23586
-        // shortcut.push(exe_stem.to_owned() + OsStr::new(".lnk"));
         let lnk_name = {
             let exe_name = exe
                 .file_name()
@@ -100,7 +111,7 @@ fn main() -> Result<()> {
             shortcut.display(),
             abs_exe.display(),
         );
-        create_lnk(&shortcut, &abs_exe).context("failed to create app shortcut")?;
+        create_lnk(&shortcut, &abs_exe, None).context("failed to create app shortcut")?;
 
         let mut s = String::new();
         std::io::stdin().read_line(&mut s)?;
@@ -110,12 +121,22 @@ fn main() -> Result<()> {
         shortcut.push("Start (create shortcut).lnk");
 
         let exe_name = current_exe().context("failed to locate program for Send To")?;
+
+        // imageres.dll (163) is the link icon.
+        let mut icon_path =
+            get_path(Shell::FOLDERID_System).context("obtaining system32 folder for icon")?;
+        icon_path.push("imageres.dll");
+        let icon_path = IconPath {
+            path: icon_path,
+            index: 154,
+        };
+
         eprintln!(
             "install shortcut at \"{}\" to \"{}\"",
             shortcut.display(),
             exe_name.display()
         );
-        create_lnk(&shortcut, &exe_name).context("failed to install to Send To")?;
+        create_lnk(&shortcut, &exe_name, Some(&icon_path)).context("failed to install to Send To")?;
     }
 
     Ok(())
