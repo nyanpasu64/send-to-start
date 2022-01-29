@@ -6,5 +6,6 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow = "1.0.53"
 clap = { version = "3.0.13", features = ["derive"] }
-lnk = "0.3.0"
+windows = { version = "0.30.0", features = ["Win32_UI_Shell", "Win32_Foundation", "Win32_System_Com", "Win32_Globalization"] }
