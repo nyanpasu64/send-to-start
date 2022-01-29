@@ -1,7 +1,7 @@
 use std::env::current_exe;
 use std::ffi::{c_void, OsString};
 use std::fs::create_dir_all;
-use std::mem::size_of;
+use std::mem::size_of_val;
 use std::path::{Path, PathBuf};
 use std::slice;
 
@@ -120,7 +120,7 @@ fn main() -> Result<()> {
         let exe_name = current_exe().context("failed to locate program for Send To")?;
 
         let mut icon_info: SHSTOCKICONINFO = SHSTOCKICONINFO::default();
-        icon_info.cbSize = size_of::<SHSTOCKICONINFO>() as u32;
+        icon_info.cbSize = size_of_val(&icon_info) as u32;
         unsafe {
             SHGetStockIconInfo(
                 Shell::SIID_LINK,
