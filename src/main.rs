@@ -1,18 +1,14 @@
-use ::core::ffi::c_void;
-use std::ffi::OsString;
+use std::ffi::{c_void, OsString};
 use std::path::PathBuf;
 use std::slice;
 
-use anyhow::Context;
-use anyhow::Result;
+use anyhow::{Context, Result};
+use clap::Parser;
 use windows::core::GUID;
-use windows::Win32::Foundation::HANDLE;
-use windows::Win32::Foundation::PWSTR;
+use windows::Win32::Foundation::{HANDLE, PWSTR};
 use windows::Win32::Globalization::lstrlenW;
 use windows::Win32::UI::Shell;
 use windows::Win32::UI::Shell::{SHGetKnownFolderPath, KF_FLAG_DEFAULT};
-
-use clap::Parser;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
