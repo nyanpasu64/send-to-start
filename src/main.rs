@@ -48,6 +48,15 @@ fn create_lnk(link: &Path, target: &Path, icon: Option<&SHSTOCKICONINFO>) -> Res
             .SetPath(target.as_os_str())
             .with_context(|| format!("setting .lnk path to \"{}\"", target.display()))?;
 
+        let working_dir = target.parent().with_context(|| {
+            format!("finding parent directory of file \"{}\"", target.display())
+        })?;
+        shell_link
+            .SetWorkingDirectory(working_dir.as_os_str())
+            .with_context(|| {
+                format!("setting .lnk working directory to \"{}\"", working_dir.display())
+            })?;
+
         // Pick the "link" icon.
         if let Some(icon) = icon {
             // SetIconLocation() doesn't mutate its string...
